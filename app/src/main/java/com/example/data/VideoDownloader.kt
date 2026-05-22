@@ -3,6 +3,8 @@ package com.example.data
 import android.content.Context
 import android.os.Environment
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -49,6 +51,7 @@ class VideoDownloader(private val context: Context) {
                         var lastUpdate = System.currentTimeMillis()
 
                         while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                            currentCoroutineContext().ensureActive()
                             outputStream.write(buffer, 0, bytesRead)
                             downloadedBytes += bytesRead
 

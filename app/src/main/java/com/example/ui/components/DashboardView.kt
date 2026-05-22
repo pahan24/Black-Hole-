@@ -67,10 +67,8 @@ fun DashboardView(
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
 
-    if (currentPlayingVideo != null) {
-        BackHandler {
-            viewModel.currentPlayingVideo.value = null
-        }
+    BackHandler(enabled = currentPlayingVideo != null) {
+        viewModel.currentPlayingVideo.value = null
     }
 
     Box(
@@ -210,9 +208,10 @@ fun DashboardView(
         }
 
         // Floating full cover video media player view
-        if (currentPlayingVideo != null) {
+        val playingVideo = currentPlayingVideo
+        if (playingVideo != null) {
             VideoPlayerView(
-                video = currentPlayingVideo!!,
+                video = playingVideo,
                 onDismiss = { viewModel.currentPlayingVideo.value = null }
             )
         }

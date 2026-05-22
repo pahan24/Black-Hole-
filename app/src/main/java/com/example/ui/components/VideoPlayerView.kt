@@ -40,8 +40,20 @@ fun VideoPlayerView(
     DisposableEffect(Unit) {
         onDispose {
             try {
-                videoViewRef.view?.stopPlayback()
-            } catch (e: Exception) {
+                isPlaying = false
+                val view = videoViewRef.view
+                videoViewRef.view = null
+                view?.let { v ->
+                    if (v.tag != "released") {
+                        v.tag = "released"
+                        v.setOnPreparedListener(null)
+                        v.setOnErrorListener(null)
+                        v.setOnCompletionListener(null)
+                        v.stopPlayback()
+                        v.suspend()
+                    }
+                }
+            } catch (e: Throwable) {
                 // ignore
             }
         }
@@ -49,15 +61,21 @@ fun VideoPlayerView(
 
     // Keep scanning progress timeline
     LaunchedEffect(isPlaying) {
-        while (isPlaying) {
+        while (isPlaying && videoViewRef.view != null) {
             try {
                 videoViewRef.view?.let { vv ->
-                    if (vv.isPlaying) {
-                        currentPos = vv.currentPosition.toFloat()
-                        duration = duration.coerceAtLeast(vv.duration.toFloat())
+                    if (vv.isAttachedToWindow && vv.tag != "released" && vv.isPlaying) {
+                        val rawPos = vv.currentPosition.toFloat()
+                        val rawDuration = vv.duration.toFloat()
+                        if (rawPos >= 0f) {
+                            currentPos = rawPos
+                        }
+                        if (rawDuration > 0f) {
+                            duration = duration.coerceAtLeast(rawDuration)
+                        }
                     }
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 // ignore
             }
             delay(250)
@@ -81,28 +99,60 @@ fun VideoPlayerView(
                             // Fallback to active stream if file got deleted
                             setVideoPath(video.downloadUrl)
                         }
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         e.printStackTrace()
                     }
                     setOnPreparedListener { mp ->
                         try {
-                            mp.isLooping = true
-                            start()
-                            isPlaying = true
-                            duration = duration.coerceAtLeast(mp.duration.toFloat())
-                        } catch (e: Exception) {
+                            if (tag != "released") {
+                                mp.isLooping = true
+                                start()
+                                isPlaying = true
+                                val mpDuration = mp.duration.toFloat()
+                                if (mpDuration > 0f) {
+                                    duration = duration.coerceAtLeast(mpDuration)
+                                }
+                            }
+                        } catch (e: Throwable) {
                             e.printStackTrace()
                         }
                     }
                     setOnErrorListener { mp, what, extra ->
                         // Silent error handler preventing crash or default dialog loops
+                        isPlaying = false
                         true
+                    }
+                    setOnCompletionListener {
+                        try {
+                            if (tag != "released") {
+                                isPlaying = false
+                                currentPos = 0f
+                            }
+                        } catch (e: Throwable) {
+                            // ignore
+                        }
                     }
                     // Assign the instance once on creation to avoid update block state writes
                     videoViewRef.view = this
                 }
             },
             update = { /* no-op to prevent state-write recomposition cascades */ },
+            onRelease = { view ->
+                try {
+                    isPlaying = false
+                    videoViewRef.view = null
+                    if (view.tag != "released") {
+                        view.tag = "released"
+                        view.setOnPreparedListener(null)
+                        view.setOnErrorListener(null)
+                        view.setOnCompletionListener(null)
+                        view.stopPlayback()
+                        view.suspend()
+                    }
+                } catch (e: Throwable) {
+                    // ignore
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
@@ -160,14 +210,16 @@ fun VideoPlayerView(
                     .clickable {
                         videoViewRef.view?.let { vv ->
                             try {
-                                if (vv.isPlaying) {
-                                    vv.pause()
-                                    isPlaying = false
-                                } else {
-                                    vv.start()
-                                    isPlaying = true
+                                if (vv.isAttachedToWindow && vv.tag != "released") {
+                                    if (vv.isPlaying) {
+                                        vv.pause()
+                                        isPlaying = false
+                                    } else {
+                                        vv.start()
+                                        isPlaying = true
+                                    }
                                 }
-                            } catch (e: Exception) {
+                            } catch (e: Throwable) {
                                 e.printStackTrace()
                             }
                         }
@@ -198,19 +250,25 @@ fun VideoPlayerView(
                     .background(Color.Black.copy(alpha = 0.45f))
                     .padding(12.dp)
             ) {
+                val safeMaxRange = duration.coerceAtLeast(100f)
+                val safeCurrentPos = currentPos.coerceIn(0f, safeMaxRange)
+
                 Slider(
-                    value = currentPos,
+                    value = safeCurrentPos,
                     onValueChange = { value ->
                         currentPos = value
                     },
                     onValueChangeFinished = {
                         try {
-                            videoViewRef.view?.seekTo(currentPos.toInt())
-                        } catch (e: Exception) {
+                            val view = videoViewRef.view
+                            if (view != null && view.isAttachedToWindow && view.tag != "released" && duration > 0f) {
+                                view.seekTo(currentPos.toInt())
+                            }
+                        } catch (e: Throwable) {
                             e.printStackTrace()
                         }
                     },
-                    valueRange = 0f..duration.coerceAtLeast(100f),
+                    valueRange = 0f..safeMaxRange,
                     colors = SliderDefaults.colors(
                         thumbColor = SingularityCyan,
                         activeTrackColor = SingularityCyan,
@@ -240,9 +298,10 @@ fun VideoPlayerView(
 }
 
 private fun formatTime(millis: Int): String {
-    val sec = (millis / 1000) % 60
-    val min = (millis / (1000 * 60)) % 60
-    val hr = (millis / (1000 * 60 * 60)) % 24
+    val safeMillis = millis.coerceAtLeast(0)
+    val sec = (safeMillis / 1000) % 60
+    val min = (safeMillis / (1000 * 60)) % 60
+    val hr = (safeMillis / (1000 * 60 * 60)) % 24
     return if (hr > 0) {
         String.format("%02d:%02d:%02d", hr, min, sec)
     } else {
