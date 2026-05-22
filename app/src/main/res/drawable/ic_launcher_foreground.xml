@@ -1,0 +1,40 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Outer celestial accretion ring -->
+    <path
+        android:strokeColor="#7F00FF"
+        android:strokeWidth="2.0"
+        android:pathData="M 54,20 A 34,34 0 1 1 54,88 A 34,34 0 1 1 54,20" />
+    
+    <!-- Orbiting gravity spiral dust stream in laser cyan -->
+    <path
+        android:strokeColor="#00FFDD"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M 30,35 C 40,25 68,23 78,38 C 88,52 83,72 68,81 C 53,90 35,81 32,64" />
+
+    <!-- Event Horizon Singularity Center Void -->
+    <path
+        android:fillColor="#000000"
+        android:strokeColor="#00FFDD"
+        android:strokeWidth="4.0"
+        android:pathData="M 54,39 A 15,15 0 1 1 54,69 A 15,15 0 1 1 54,39" />
+        
+    <!-- Swirling star flares -->
+    <path
+        android:fillColor="#00FFDD"
+        android:pathData="M 21,48 A 2,2 0 1 0 21,52 A 2,2 0 1 0 21,48" />
+    <path
+        android:fillColor="#BF55EC"
+        android:pathData="M 85,62 A 2.5,2.5 0 1 0 85,67 A 2.5,2.5 0 1 0 85,62" />
+    <path
+        android:fillColor="#00FFDD"
+        android:pathData="M 54,10 A 2,2 0 1 0 54,14 A 2,2 0 1 0 54,10" />
+    <path
+        android:fillColor="#BF55EC"
+        android:pathData="M 46,92 A 2,2 0 1 0 46,96 A 2,2 0 1 0 46,92" />
+</vector>

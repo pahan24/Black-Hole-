@@ -1,0 +1,83 @@
+# Codemagic CI/CD configuration for Black Hole Downloader
+# For detailed documentation, see: https://docs.codemagic.io/yaml-basic-schema/yaml-specification/
+
+workflows:
+  android-debug-apk:
+    name: Build Android Debug APK
+    max_build_duration: 30
+    instance_type: mac_mini_m1
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch_patterns:
+        - pattern: '*'
+    scripts:
+      - name: Set up licensing and SDK tools
+        script: |
+          yes | sdkmanager --licenses || true
+      - name: Set up environment config
+        script: |
+          # Copy .env.example to .env to satisfy the Secrets Gradle Plugin securely
+          if [ -f .env.example ] && [ ! -f .env ]; then
+            cp .env.example .env
+          fi
+      - name: Build Debug APK
+        script: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+    artifacts:
+      - app/build/outputs/apk/debug/*.apk
+    publishing:
+      email:
+        recipients:
+          - bpahan685@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  android-release-build:
+    name: Build Android Release (AAB/APK)
+    max_build_duration: 30
+    instance_type: mac_mini_m1
+    environment:
+      vars:
+        # Define release keystore variables in Codemagic UI if building release
+        KEYSTORE_PATH: "/tmp/my-upload-key.jks"
+        # STORE_PASSWORD: Fetch from Codemagic Environment Variables
+        # KEY_PASSWORD: Fetch from Codemagic Environment Variables
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'release/*'
+    scripts:
+      - name: Set up licensing and SDK tools
+        script: |
+          yes | sdkmanager --licenses || true
+      - name: Decode signing Keystore
+        script: |
+          # If keystore is stored in Codemagic environment variables, decode it
+          if [ ! -z "$CM_KEYSTORE" ]; then
+            echo "$CM_KEYSTORE" | base64 --decode > /tmp/my-upload-key.jks
+          fi
+      - name: Set up environment config
+        script: |
+          if [ -f .env.example ] && [ ! -f .env ]; then
+            cp .env.example .env
+          fi
+      - name: Build Release APK & Bundle
+        script: |
+          chmod +x gradlew
+          # Build signed release APK & AAB if credentials exist, fallback to assembleRelease
+          ./gradlew assembleRelease bundleRelease || ./gradlew assembleRelease
+    artifacts:
+      - app/build/outputs/apk/release/*.apk
+      - app/build/outputs/bundle/release/*.aab
+    publishing:
+      email:
+        recipients:
+          - bpahan685@gmail.com
+        notify:
+          success: true
+          failure: true

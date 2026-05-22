@@ -1,0 +1,6 @@
+{
+  "name": "Black Hole",
+  "description": "Sleek and powerful video downloader for Instagram, TikTok, YouTube, and Facebook with an elegant cosmic black-hole interface.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
